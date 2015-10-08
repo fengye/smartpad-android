@@ -25,12 +25,12 @@ public class SensorService extends IntentService {
     private static final String EXTRA_LISTENER = "net.mzimmer.android.apps.rotation.extra.listener";
     private static final String EXTRA_SENSOR_DELAY = "net.mzimmer.android.apps.rotation.extra.sensorDelay";
 
-    private static final HashMap<SensorEventListener, Integer> listenerIndices;
-    private static int nextIndex;
+    private static final HashMap<Integer, SensorEventListener> listeners;
+    private static final int ILLEGAL_LISTENER_HASH;
 
     static {
-        listenerIndices = new HashMap<>();
-        nextIndex = 0;
+        listeners = new HashMap<>();
+        ILLEGAL_LISTENER_HASH = -1;
     }
 
     private SensorManager sensorManager;
@@ -54,29 +54,31 @@ public class SensorService extends IntentService {
         context.startService(intent);
     }
 
-    public static void addListener(Context context, SensorEventListener listener, int sensorDelay) {
-        if (listenerIndices.containsKey(listener)) {
-            return;
+    public static boolean addListener(Context context, SensorEventListener listener, int sensorDelay) {
+        int hash = listener.hashCode();
+        assert hash != ILLEGAL_LISTENER_HASH;
+        if (listeners.put(hash, listener) == null) {
+            Intent intent = new Intent(context, SensorService.class);
+            intent.setAction(ACTION_ADD_LISTENER);
+            intent.putExtra(EXTRA_LISTENER, hash);
+            intent.putExtra(EXTRA_SENSOR_DELAY, sensorDelay);
+            context.startService(intent);
+            return true;
         }
-        final int index = nextIndex++;
-        listenerIndices.put(listener, index);
-        Intent intent = new Intent(context, SensorService.class);
-        intent.setAction(ACTION_ADD_LISTENER);
-        intent.putExtra(EXTRA_LISTENER, index);
-        intent.putExtra(EXTRA_SENSOR_DELAY, sensorDelay);
-        context.startService(intent);
+        return false;
     }
 
-    public static void removeListener(Context context, SensorEventListener listener) {
-        if (!listenerIndices.containsKey(listener)) {
-            return;
+    public static boolean removeListener(Context context, SensorEventListener listener) {
+        int hash = listener.hashCode();
+        assert hash != ILLEGAL_LISTENER_HASH;
+        if (listeners.remove(hash) != null) {
+            Intent intent = new Intent(context, SensorService.class);
+            intent.setAction(ACTION_REMOVE_LISTENER);
+            intent.putExtra(EXTRA_LISTENER, hash);
+            context.startService(intent);
+            return true;
         }
-        final int index = listenerIndices.get(listener);
-        listenerIndices.remove(listener);
-        Intent intent = new Intent(context, SensorService.class);
-        intent.setAction(ACTION_REMOVE_LISTENER);
-        intent.putExtra(EXTRA_LISTENER, index);
-        context.startService(intent);
+        return false;
     }
 
     @Override
@@ -84,14 +86,9 @@ public class SensorService extends IntentService {
         if (intent != null) {
             final String action = intent.getAction();
             if (ACTION_ADD_LISTENER.equals(action) || ACTION_REMOVE_LISTENER.equals(action)) {
-                final int index = intent.getIntExtra(EXTRA_LISTENER, -1);
-                SensorEventListener listener = null;
-                for (Map.Entry<SensorEventListener, Integer> entry : listenerIndices.entrySet()) {
-                    if (entry.getValue() == index) {
-                        listener = entry.getKey();
-                        break;
-                    }
-                }
+                final int hash = intent.getIntExtra(EXTRA_LISTENER, ILLEGAL_LISTENER_HASH);
+                assert hash != ILLEGAL_LISTENER_HASH;
+                SensorEventListener listener = listeners.get(hash);
                 if (ACTION_ADD_LISTENER.equals(action)) {
                     final int sensorDelay = intent.getIntExtra(EXTRA_SENSOR_DELAY, Preferences.DEFAULT_SENSOR_DELAY);
                     handleActionAddListener(listener, sensorDelay);
@@ -138,9 +135,10 @@ public class SensorService extends IntentService {
     }
 
     private void handleActionStop() {
-        for (SensorEventListener listener : listenerIndices.keySet()) {
-            sensorManager.unregisterListener(listener);
+        for (Map.Entry<Integer, SensorEventListener> entry : listeners.entrySet()) {
+            sensorManager.unregisterListener(entry.getValue());
         }
+        listeners.clear();
         notificationManager.cancel(NOTIFICATION_ID);
     }
 
