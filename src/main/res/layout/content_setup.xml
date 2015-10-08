@@ -65,31 +65,4 @@
         android:layout_below="@+id/destination_host"
         android:hint="@string/destination_port"
         android:inputType="number" />
-
-    <TextView
-        android:id="@+id/display_live_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/destination_port"
-        android:text="@string/display_live" />
-
-    <RadioGroup
-        android:id="@+id/display_live"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/display_live_label"
-        android:orientation="vertical">
-
-        <RadioButton
-            android:id="@+id/display_live_yes"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/yes" />
-
-        <RadioButton
-            android:id="@+id/display_live_no"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/no" />
-    </RadioGroup>
 </RelativeLayout>

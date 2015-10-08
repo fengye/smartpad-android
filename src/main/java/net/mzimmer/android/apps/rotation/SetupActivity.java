@@ -19,7 +19,6 @@ import java.util.Map;
 public class SetupActivity extends AppCompatActivity implements RadioGroup.OnCheckedChangeListener {
 
     private static final HashMap<Integer, Integer> SENSOR_DELAY_RADIO_BUTTON_IDS;
-    private static final HashMap<Boolean, Integer> DISPLAY_LIVE_RADIO_BUTTON_IDS;
 
     static {
         SENSOR_DELAY_RADIO_BUTTON_IDS = new HashMap<>();
@@ -27,19 +26,12 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_GAME, R.id.sensor_delay_game);
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_NORMAL, R.id.sensor_delay_normal);
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_UI, R.id.sensor_delay_ui);
-
-        DISPLAY_LIVE_RADIO_BUTTON_IDS = new HashMap<>();
-        DISPLAY_LIVE_RADIO_BUTTON_IDS.put(true, R.id.display_live_yes);
-        DISPLAY_LIVE_RADIO_BUTTON_IDS.put(false, R.id.display_live_no);
     }
 
     private Preferences preferences;
-    private RadioGroup sensorDelayRadioGroup;
-    private EditText destinationHostEditText;
     private EditText destinationPortEditText;
-    private RadioGroup displayLiveRadioGroup;
 
-    public static int getSensorDelayRadioButtonIdFromValue(int value) {
+    private static int getSensorDelayRadioButtonIdFromValue(int value) {
         if (SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
             return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
         } else {
@@ -47,30 +39,13 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
         }
     }
 
-    public static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
+    private static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
         for (Map.Entry<Integer, Integer> entry : SENSOR_DELAY_RADIO_BUTTON_IDS.entrySet()) {
             if (radioButtonId == entry.getValue()) {
                 return entry.getKey();
             }
         }
         return Preferences.DEFAULT_SENSOR_DELAY;
-    }
-
-    public static int getDisplayLiveRadioButtonIdFromValue(boolean value) {
-        if (DISPLAY_LIVE_RADIO_BUTTON_IDS.containsKey(value)) {
-            return DISPLAY_LIVE_RADIO_BUTTON_IDS.get(value);
-        } else {
-            return DISPLAY_LIVE_RADIO_BUTTON_IDS.get(Preferences.DEFAULT_DISPLAY_LIVE);
-        }
-    }
-
-    public static boolean getDisplayLiveValueFromRadioButtonId(int radioButtonId) {
-        for (Map.Entry<Boolean, Integer> entry : DISPLAY_LIVE_RADIO_BUTTON_IDS.entrySet()) {
-            if (radioButtonId == entry.getValue()) {
-                return entry.getKey();
-            }
-        }
-        return Preferences.DEFAULT_DISPLAY_LIVE;
     }
 
     @Override
@@ -84,15 +59,15 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SensorService.start(getApplicationContext());
                 startActivityForResult(new Intent(getApplicationContext(), RunActivity.class), 0);
             }
         });
 
         preferences = new Preferences(getApplicationContext());
-        sensorDelayRadioGroup = (RadioGroup) findViewById(R.id.sensor_delay);
-        destinationHostEditText = (EditText) findViewById(R.id.destination_host);
+        RadioGroup sensorDelayRadioGroup = (RadioGroup) findViewById(R.id.sensor_delay);
+        EditText destinationHostEditText = (EditText) findViewById(R.id.destination_host);
         destinationPortEditText = (EditText) findViewById(R.id.destination_port);
-        displayLiveRadioGroup = (RadioGroup) findViewById(R.id.display_live);
 
         sensorDelayRadioGroup.setOnCheckedChangeListener(this);
         destinationHostEditText.addTextChangedListener(new TextWatcher() {
@@ -129,17 +104,14 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
                 }
             }
         });
-        displayLiveRadioGroup.setOnCheckedChangeListener(this);
 
         int sensorDelay = preferences.getSensorDelay();
         String destinationHost = preferences.getDestinationHost();
         int destinationPort = preferences.getDestinationPort();
-        boolean displayLive = preferences.getDisplayLive();
 
         ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(sensorDelay))).setChecked(true);
         destinationHostEditText.setText(destinationHost);
         destinationPortEditText.setText(String.valueOf(destinationPort));
-        ((RadioButton) findViewById(getDisplayLiveRadioButtonIdFromValue(displayLive))).setChecked(true);
     }
 
     @Override
@@ -147,9 +119,6 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
         switch (group.getId()) {
             case R.id.sensor_delay:
                 preferences.setSensorDelay(getSensorDelayValueFromRadioButtonId(checkedId));
-                break;
-            case R.id.display_live:
-                preferences.setDisplayLive(getDisplayLiveValueFromRadioButtonId(checkedId));
                 break;
             default:
                 throw new IllegalStateException();

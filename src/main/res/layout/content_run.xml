@@ -15,7 +15,6 @@
     <TextView
         android:id="@+id/info"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/display_live_disabled" />
+        android:layout_height="wrap_content" />
 
 </RelativeLayout>
