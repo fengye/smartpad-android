@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="@dimen/activity_vertical_margin"
+    android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".SetupActivity"
+    tools:showIn="@layout/activity_setup">
+
+    <TextView
+        android:id="@+id/sensor_sampling_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/sensor_sampling" />
+
+    <RadioGroup
+        android:id="@+id/sensor_sampling"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/sensor_sampling_label"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/sensor_sampling_fastest"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sensor_sampling_fastest" />
+
+        <RadioButton
+            android:id="@+id/sensor_sampling_game"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sensor_sampling_game" />
+
+        <RadioButton
+            android:id="@+id/sensor_sampling_normal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sensor_sampling_normal" />
+
+        <RadioButton
+            android:id="@+id/sensor_sampling_ui"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sensor_sampling_ui" />
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/destination_host"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/sensor_sampling"
+        android:hint="@string/destination_host_hint"
+        android:inputType="textUri" />
+
+    <EditText
+        android:id="@+id/destination_port"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/destination_host"
+        android:hint="@string/destination_port_hint"
+        android:inputType="number" />
+</RelativeLayout>
