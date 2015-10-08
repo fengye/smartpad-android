@@ -13,49 +13,49 @@
     tools:showIn="@layout/activity_setup">
 
     <TextView
-        android:id="@+id/sensor_sampling_label"
+        android:id="@+id/sensor_delay_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/sensor_sampling" />
+        android:text="@string/sensor_delay" />
 
     <RadioGroup
-        android:id="@+id/sensor_sampling"
+        android:id="@+id/sensor_delay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/sensor_sampling_label"
+        android:layout_below="@+id/sensor_delay_label"
         android:orientation="vertical">
 
         <RadioButton
-            android:id="@+id/sensor_sampling_fastest"
+            android:id="@+id/sensor_delay_fastest"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sensor_sampling_fastest" />
+            android:text="@string/sensor_delay_fastest" />
 
         <RadioButton
-            android:id="@+id/sensor_sampling_game"
+            android:id="@+id/sensor_delay_game"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sensor_sampling_game" />
+            android:text="@string/sensor_delay_game" />
 
         <RadioButton
-            android:id="@+id/sensor_sampling_normal"
+            android:id="@+id/sensor_delay_normal"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sensor_sampling_normal" />
+            android:text="@string/sensor_delay_normal" />
 
         <RadioButton
-            android:id="@+id/sensor_sampling_ui"
+            android:id="@+id/sensor_delay_ui"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/sensor_sampling_ui" />
+            android:text="@string/sensor_delay_ui" />
     </RadioGroup>
 
     <EditText
         android:id="@+id/destination_host"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/sensor_sampling"
-        android:hint="@string/destination_host_hint"
+        android:layout_below="@+id/sensor_delay"
+        android:hint="@string/destination_host"
         android:inputType="textUri" />
 
     <EditText
@@ -63,6 +63,33 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/destination_host"
-        android:hint="@string/destination_port_hint"
+        android:hint="@string/destination_port"
         android:inputType="number" />
+
+    <TextView
+        android:id="@+id/display_live_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/destination_port"
+        android:text="@string/display_live" />
+
+    <RadioGroup
+        android:id="@+id/display_live"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/display_live_label"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/display_live_yes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/yes" />
+
+        <RadioButton
+            android:id="@+id/display_live_no"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no" />
+    </RadioGroup>
 </RelativeLayout>

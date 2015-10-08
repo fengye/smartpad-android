@@ -6,23 +6,28 @@ import android.hardware.SensorManager;
 
 public class Preferences {
 
-    public static final int SENSOR_SAMPLING_DEFAULT;
-    public static final String DESTINATION_HOST_DEFAULT;
-    public static final int DESTINATION_PORT_DEFAULT;
+    public static final int DEFAULT_SENSOR_DELAY;
+    public static final String DEFAULT_DESTINATION_HOST;
+    public static final int DEFAULT_DESTINATION_PORT;
+    public static final boolean DEFAULT_DISPLAY_LIVE;
+
     private static final String SHARED_PREFERENCES_NAME;
-    private static final String SENSOR_SAMPLING_PREFERENCES_KEY;
+    private static final String SENSOR_DELAY_PREFERENCES_KEY;
     private static final String DESTINATION_HOST_PREFERENCES_KEY;
     private static final String DESTINATION_PORT_PREFERENCES_KEY;
+    private static final String DISPLAY_LIVE_PREFERENCES_KEY;
 
     static {
+        DEFAULT_SENSOR_DELAY = SensorManager.SENSOR_DELAY_GAME;
+        DEFAULT_DESTINATION_HOST = "";
+        DEFAULT_DESTINATION_PORT = 0;
+        DEFAULT_DISPLAY_LIVE = false;
+
         SHARED_PREFERENCES_NAME = "rotationPreferences";
-        SENSOR_SAMPLING_PREFERENCES_KEY = "sensorSampling";
+        SENSOR_DELAY_PREFERENCES_KEY = "sensorDelay";
         DESTINATION_HOST_PREFERENCES_KEY = "destinationHost";
         DESTINATION_PORT_PREFERENCES_KEY = "destinationPort";
-
-        SENSOR_SAMPLING_DEFAULT = SensorManager.SENSOR_DELAY_GAME;
-        DESTINATION_HOST_DEFAULT = "";
-        DESTINATION_PORT_DEFAULT = 0;
+        DISPLAY_LIVE_PREFERENCES_KEY = "displayLive";
     }
 
     private SharedPreferences sharedPreferences;
@@ -33,17 +38,17 @@ public class Preferences {
         sharedPreferencesEditor = sharedPreferences.edit();
     }
 
-    public int getSensorSampling() {
-        return sharedPreferences.getInt(SENSOR_SAMPLING_PREFERENCES_KEY, SENSOR_SAMPLING_DEFAULT);
+    public int getSensorDelay() {
+        return sharedPreferences.getInt(SENSOR_DELAY_PREFERENCES_KEY, DEFAULT_SENSOR_DELAY);
     }
 
-    public void setSensorSampling(int sensorSampling) {
-        sharedPreferencesEditor.putInt(SENSOR_SAMPLING_PREFERENCES_KEY, sensorSampling);
+    public void setSensorDelay(int sensorDelay) {
+        sharedPreferencesEditor.putInt(SENSOR_DELAY_PREFERENCES_KEY, sensorDelay);
         sharedPreferencesEditor.commit();
     }
 
     public String getDestinationHost() {
-        return sharedPreferences.getString(DESTINATION_HOST_PREFERENCES_KEY, DESTINATION_HOST_DEFAULT);
+        return sharedPreferences.getString(DESTINATION_HOST_PREFERENCES_KEY, DEFAULT_DESTINATION_HOST);
     }
 
     public void setDestinationHost(String destinationHost) {
@@ -52,11 +57,20 @@ public class Preferences {
     }
 
     public int getDestinationPort() {
-        return sharedPreferences.getInt(DESTINATION_PORT_PREFERENCES_KEY, DESTINATION_PORT_DEFAULT);
+        return sharedPreferences.getInt(DESTINATION_PORT_PREFERENCES_KEY, DEFAULT_DESTINATION_PORT);
     }
 
     public void setDestinationPort(int destinationPort) {
         sharedPreferencesEditor.putInt(DESTINATION_PORT_PREFERENCES_KEY, destinationPort);
+        sharedPreferencesEditor.commit();
+    }
+
+    public boolean getDisplayLive() {
+        return sharedPreferences.getBoolean(DISPLAY_LIVE_PREFERENCES_KEY, DEFAULT_DISPLAY_LIVE);
+    }
+
+    public void setDisplayLive(boolean displayLive) {
+        sharedPreferencesEditor.putBoolean(DISPLAY_LIVE_PREFERENCES_KEY, displayLive);
         sharedPreferencesEditor.commit();
     }
 }

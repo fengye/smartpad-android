@@ -12,4 +12,10 @@
     tools:context="net.mzimmer.android.apps.rotation.RunActivity"
     tools:showIn="@layout/activity_run">
 
+    <TextView
+        android:id="@+id/info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/display_live_disabled" />
+
 </RelativeLayout>
