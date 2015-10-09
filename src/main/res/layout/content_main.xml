@@ -65,4 +65,11 @@
         android:layout_below="@+id/destination_host"
         android:hint="@string/destination_port"
         android:inputType="number" />
+
+    <TextView
+        android:id="@+id/info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/destination_port"
+        android:visibility="gone" />
 </RelativeLayout>

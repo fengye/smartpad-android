@@ -1,6 +1,5 @@
 package net.mzimmer.android.apps.rotation;
 
-import android.content.Intent;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -12,12 +11,13 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.TextView;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SetupActivity extends AppCompatActivity implements RadioGroup.OnCheckedChangeListener {
-
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, EventService.Listener {
     private static final HashMap<Integer, Integer> SENSOR_DELAY_RADIO_BUTTON_IDS;
 
     static {
@@ -29,7 +29,13 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
     }
 
     private Preferences preferences;
+    private FloatingActionButton start;
+    private FloatingActionButton stop;
+    private RadioGroup sensorDelayRadioGroup;
+    private EditText destinationHostEditText;
     private EditText destinationPortEditText;
+    private TextView info;
+    private SensorEventTextViewListener sensorEventTextViewListener;
 
     private static int getSensorDelayRadioButtonIdFromValue(int value) {
         if (SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
@@ -51,24 +57,20 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_setup);
+        setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                SensorService.start(getApplicationContext());
-                startActivityForResult(new Intent(getApplicationContext(), RunActivity.class), 0);
-            }
-        });
-
         preferences = new Preferences(getApplicationContext());
-        RadioGroup sensorDelayRadioGroup = (RadioGroup) findViewById(R.id.sensor_delay);
-        EditText destinationHostEditText = (EditText) findViewById(R.id.destination_host);
+        start = (FloatingActionButton) findViewById(R.id.start);
+        stop = (FloatingActionButton) findViewById(R.id.stop);
+        sensorDelayRadioGroup = (RadioGroup) findViewById(R.id.sensor_delay);
+        destinationHostEditText = (EditText) findViewById(R.id.destination_host);
         destinationPortEditText = (EditText) findViewById(R.id.destination_port);
+        info = (TextView) findViewById(R.id.info);
 
+        start.setOnClickListener(this);
+        stop.setOnClickListener(this);
         sensorDelayRadioGroup.setOnCheckedChangeListener(this);
         destinationHostEditText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -112,16 +114,70 @@ public class SetupActivity extends AppCompatActivity implements RadioGroup.OnChe
         ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(sensorDelay))).setChecked(true);
         destinationHostEditText.setText(destinationHost);
         destinationPortEditText.setText(String.valueOf(destinationPort));
+
+        sensorEventTextViewListener = new SensorEventTextViewListener(info);
+        Rotation.sensorListener.add(sensorEventTextViewListener, SensorManager.SENSOR_DELAY_UI);
+        EventService.add(this);
+
+        updateUI();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Rotation.sensorListener.remove(sensorEventTextViewListener);
+        EventService.remove(this);
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.start: {
+                StartStopTrigger.start(getApplicationContext());
+                break;
+            }
+            case R.id.stop: {
+                StartStopTrigger.stop(getApplicationContext());
+                break;
+            }
+            default:
+                throw new IllegalStateException();
+        }
     }
 
     @Override
     public void onCheckedChanged(RadioGroup group, int checkedId) {
         switch (group.getId()) {
-            case R.id.sensor_delay:
+            case R.id.sensor_delay: {
                 preferences.setSensorDelay(getSensorDelayValueFromRadioButtonId(checkedId));
                 break;
+            }
             default:
                 throw new IllegalStateException();
         }
+    }
+
+    @Override
+    public void on(final String action, Serializable data) {
+        if (StartStopTrigger.ACTION_START.equals(action) || StartStopTrigger.ACTION_STOP.equals(action)) {
+            updateUI();
+        }
+    }
+
+    private void updateUI() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (EventService.isRunning()) {
+                    start.setVisibility(View.GONE);
+                    stop.setVisibility(View.VISIBLE);
+                    info.setVisibility(View.VISIBLE);
+                } else {
+                    start.setVisibility(View.VISIBLE);
+                    stop.setVisibility(View.GONE);
+                    info.setVisibility(View.GONE);
+                }
+            }
+        });
     }
 }

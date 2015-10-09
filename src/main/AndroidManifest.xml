@@ -5,13 +5,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".Rotation"
         android:allowBackup="true"
         android:icon="@mipmap/rotation"
         android:label="@string/rotation"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".SetupActivity"
+            android:name=".MainActivity"
             android:label="@string/rotation"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -20,17 +21,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".RunActivity"
-            android:label="@string/rotation"
-            android:theme="@style/AppTheme.NoActionBar">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="net.mzimmer.android.apps.rotation.SetupActivity" />
-        </activity>
 
         <service
-            android:name=".SensorService"
+            android:name=".EventService"
             android:exported="false" />
         <service
             android:name=".NetworkService"
