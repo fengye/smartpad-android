@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name=".Rotation"
+        android:name=".RotationApplication"
         android:allowBackup="true"
         android:icon="@mipmap/rotation"
         android:label="@string/rotation"
@@ -23,7 +23,7 @@
         </activity>
 
         <service
-            android:name=".EventService"
+            android:name=".SensorService"
             android:exported="false" />
         <service
             android:name=".NetworkService"

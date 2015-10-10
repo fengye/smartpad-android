@@ -1,23 +1,29 @@
 package net.mzimmer.android.apps.rotation;
 
+import android.content.Context;
+import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, EventService.Listener {
+/*
+ * TODO Rewrite with Service instead of IntentService
+ * TODO Fully switch UI, use wrappers and merge content_main.xml and activity_main.xml
+ * TODO Display hint for working after button clicks
+ */
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, OnTextChangeListener, SensorService.Listener, NetworkService.Listener {
     private static final HashMap<Integer, Integer> SENSOR_DELAY_RADIO_BUTTON_IDS;
 
     static {
@@ -31,18 +37,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Preferences preferences;
     private FloatingActionButton start;
     private FloatingActionButton stop;
-    private RadioGroup sensorDelayRadioGroup;
-    private EditText destinationHostEditText;
-    private EditText destinationPortEditText;
+    private RadioGroup sensorDelay;
+    private EditText destinationHost;
+    private EditText destinationPort;
     private TextView info;
-    private SensorEventTextViewListener sensorEventTextViewListener;
+
+    public static Intent viewIntent(Context context) {
+        return new Intent(context, MainActivity.class);
+    }
 
     private static int getSensorDelayRadioButtonIdFromValue(int value) {
-        if (SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
-            return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
-        } else {
-            return SENSOR_DELAY_RADIO_BUTTON_IDS.get(Preferences.DEFAULT_SENSOR_DELAY);
+        if (!SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
+            value = Preferences.DEFAULT_SENSOR_DELAY;
         }
+        return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
     }
 
     private static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
@@ -55,89 +63,74 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        preferences = new Preferences(getApplicationContext());
+        preferences = RotationApplication.getInstance().getPreferences();
         start = (FloatingActionButton) findViewById(R.id.start);
         stop = (FloatingActionButton) findViewById(R.id.stop);
-        sensorDelayRadioGroup = (RadioGroup) findViewById(R.id.sensor_delay);
-        destinationHostEditText = (EditText) findViewById(R.id.destination_host);
-        destinationPortEditText = (EditText) findViewById(R.id.destination_port);
+        sensorDelay = (RadioGroup) findViewById(R.id.sensor_delay);
+        destinationHost = (EditText) findViewById(R.id.destination_host);
+        destinationPort = (EditText) findViewById(R.id.destination_port);
         info = (TextView) findViewById(R.id.info);
 
         start.setOnClickListener(this);
         stop.setOnClickListener(this);
-        sensorDelayRadioGroup.setOnCheckedChangeListener(this);
-        destinationHostEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+        sensorDelay.setOnCheckedChangeListener(this);
+        OnTextChangeListener.Helper.register(destinationHost, this);
+        OnTextChangeListener.Helper.register(destinationPort, this);
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                preferences.setDestinationHost(s.toString());
-            }
-        });
-        destinationPortEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                try {
-                    int destinationPort = Integer.parseInt(s.toString());
-                    preferences.setDestinationPort(destinationPort);
-                    destinationPortEditText.setError(null);
-                } catch (NumberFormatException e) {
-                    destinationPortEditText.setError(getString(R.string.unable_to_parse_integer));
-                }
-            }
-        });
-
-        int sensorDelay = preferences.getSensorDelay();
-        String destinationHost = preferences.getDestinationHost();
-        int destinationPort = preferences.getDestinationPort();
-
-        ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(sensorDelay))).setChecked(true);
-        destinationHostEditText.setText(destinationHost);
-        destinationPortEditText.setText(String.valueOf(destinationPort));
-
-        sensorEventTextViewListener = new SensorEventTextViewListener(info);
-        Rotation.sensorListener.add(sensorEventTextViewListener, SensorManager.SENSOR_DELAY_UI);
-        EventService.add(this);
-
+        getSensorDelayRadioButtonFromValue(preferences.getSensorDelay()).setChecked(true);
+        destinationHost.setText(preferences.getDestinationHost());
+        destinationPort.setText(String.valueOf(preferences.getDestinationPort()));
         updateUI();
+
+        SensorService.add(this);
+        NetworkService.add(this);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Rotation.sensorListener.remove(sensorEventTextViewListener);
-        EventService.remove(this);
+        SensorService.remove(this);
+        NetworkService.remove(this);
+    }
+
+    private void updateUI() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (SensorService.isRunning() && NetworkService.isRunning()) {
+                    start.setVisibility(View.GONE);
+                    stop.setVisibility(View.VISIBLE);
+                    info.setVisibility(View.VISIBLE);
+                } else {
+                    start.setVisibility(View.VISIBLE);
+                    stop.setVisibility(View.GONE);
+                    info.setVisibility(View.GONE);
+                }
+            }
+        });
+    }
+
+    private RadioButton getSensorDelayRadioButtonFromValue(int value) {
+        return ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(value)));
     }
 
     @Override
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.start: {
-                StartStopTrigger.start(getApplicationContext());
+                String host = preferences.getDestinationHost();
+                int port = preferences.getDestinationPort();
+                NetworkService.start(getApplicationContext(), host, port);
                 break;
             }
             case R.id.stop: {
-                StartStopTrigger.stop(getApplicationContext());
+                NetworkService.stop(getApplicationContext());
                 break;
             }
             default:
@@ -158,26 +151,82 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void on(final String action, Serializable data) {
-        if (StartStopTrigger.ACTION_START.equals(action) || StartStopTrigger.ACTION_STOP.equals(action)) {
-            updateUI();
+    public void onTextChange(TextView view, String text) {
+        switch (view.getId()) {
+            case R.id.destination_host: {
+                preferences.setDestinationHost(text);
+                break;
+            }
+            case R.id.destination_port: {
+                try {
+                    int port = Integer.parseInt(text);
+                    if (port < 0 || port > 65535) {
+                        throw new NumberFormatException();
+                    }
+                    preferences.setDestinationPort(port);
+                    destinationPort.setError(null);
+                } catch (NumberFormatException e) {
+                    destinationPort.setError(getString(R.string.unable_to_parse_port));
+                }
+                break;
+            }
+            default:
+                throw new IllegalStateException();
         }
     }
 
-    private void updateUI() {
+    @Override
+    public void onSensorServiceCreate(SensorService service) {
+        updateUI();
+    }
+
+    @Override
+    public void onSensorServiceDestroy(SensorService service) {
+        updateUI();
+    }
+
+    @Override
+    public Sensor getSensor() {
+        return RotationApplication.getInstance().getSensor();
+    }
+
+    @Override
+    public int getSensorDelay() {
+        return preferences.getSensorDelay();
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        final StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(event.timestamp);
+        stringBuilder.append(System.getProperty("line.separator"));
+        for (int i = 0; i < event.values.length; ++i) {
+            stringBuilder.append(System.getProperty("line.separator"));
+            stringBuilder.append(i);
+            stringBuilder.append(':');
+            stringBuilder.append(' ');
+            stringBuilder.append(Float.toString(event.values[i]));
+        }
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (EventService.isRunning()) {
-                    start.setVisibility(View.GONE);
-                    stop.setVisibility(View.VISIBLE);
-                    info.setVisibility(View.VISIBLE);
-                } else {
-                    start.setVisibility(View.VISIBLE);
-                    stop.setVisibility(View.GONE);
-                    info.setVisibility(View.GONE);
-                }
+                info.setText(stringBuilder.toString());
             }
         });
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // ignored
+    }
+
+    @Override
+    public void onNetworkServiceCreate(NetworkService service) {
+        updateUI();
+    }
+
+    @Override
+    public void onNetworkServiceDestroy(NetworkService service) {
+        updateUI();
     }
 }

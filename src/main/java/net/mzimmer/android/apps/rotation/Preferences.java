@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.hardware.SensorManager;
 
 class Preferences {
-
     public static final int DEFAULT_SENSOR_DELAY;
     public static final String DEFAULT_DESTINATION_HOST;
     public static final int DEFAULT_DESTINATION_PORT;
