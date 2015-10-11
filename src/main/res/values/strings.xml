@@ -8,6 +8,6 @@
     <string name="destination_host">Destination host</string>
     <string name="destination_port">Destination port</string>
     <string name="unable_to_parse_port">Unable to parse port</string>
-    <string name="sensor_polling_active">Sensor polling is active</string>
+    <string name="streaming_to">Streaming to</string>
     <string name="stop">Stop</string>
 </resources>

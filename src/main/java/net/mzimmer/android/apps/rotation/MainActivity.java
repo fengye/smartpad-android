@@ -1,15 +1,21 @@
 package net.mzimmer.android.apps.rotation;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -17,16 +23,24 @@ import android.widget.TextView;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
-/*
- * TODO Rewrite with Service instead of IntentService
- * TODO Fully switch UI, use wrappers and merge content_main.xml and activity_main.xml
- * TODO Display hint for working after button clicks
- */
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, OnTextChangeListener, SensorService.Listener, NetworkService.Listener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, OnTextChangeListener, SensorEventListener {
+    private static final String ACTION_NETWORK_STARTED;
+    private static final String ACTION_NETWORK_STOPPED;
+    private static final String ACTION_NETWORK_FAILED;
+
+    private static final String EXTRA_EXCEPTION;
+
     private static final HashMap<Integer, Integer> SENSOR_DELAY_RADIO_BUTTON_IDS;
 
     static {
+        ACTION_NETWORK_STARTED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.started";
+        ACTION_NETWORK_STOPPED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.stopped";
+        ACTION_NETWORK_FAILED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed";
+
+        EXTRA_EXCEPTION = "net.mzimmer.android.apps.rotation.NetworkService.extra.exception";
+
         SENSOR_DELAY_RADIO_BUTTON_IDS = new HashMap<>();
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_FASTEST, R.id.sensor_delay_fastest);
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_GAME, R.id.sensor_delay_game);
@@ -34,7 +48,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_UI, R.id.sensor_delay_ui);
     }
 
+    private SensorManager sensorManager;
     private Preferences preferences;
+    private ViewGroup setup;
+    private ViewGroup waiting;
+    private ViewGroup running;
     private FloatingActionButton start;
     private FloatingActionButton stop;
     private RadioGroup sensorDelay;
@@ -62,6 +80,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return Preferences.DEFAULT_SENSOR_DELAY;
     }
 
+    static void triggerNetworkStarted(Context context) {
+        Intent intent = new Intent(context, MainActivity.NetworkServiceBroadcastReceiver.class);
+        intent.setAction(ACTION_NETWORK_STARTED);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    static void triggerNetworkStopped(Context context) {
+        Intent intent = new Intent(context, MainActivity.NetworkServiceBroadcastReceiver.class);
+        intent.setAction(ACTION_NETWORK_STOPPED);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    static void triggerNetworkFailed(Context context, Exception e) {
+        Intent intent = new Intent(context, MainActivity.NetworkServiceBroadcastReceiver.class);
+        intent.setAction(ACTION_NETWORK_FAILED);
+        intent.putExtra(EXTRA_EXCEPTION, e);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,7 +106,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        NetworkServiceBroadcastReceiver networkServiceBroadcastReceiver = new NetworkServiceBroadcastReceiver();
+        LocalBroadcastManager.getInstance(this).registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STARTED));
+        LocalBroadcastManager.getInstance(this).registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STOPPED));
+        LocalBroadcastManager.getInstance(this).registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_FAILED));
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         preferences = RotationApplication.getInstance().getPreferences();
+        setup = (ViewGroup) findViewById(R.id.setup);
+        waiting = (ViewGroup) findViewById(R.id.waiting);
+        running = (ViewGroup) findViewById(R.id.running);
         start = (FloatingActionButton) findViewById(R.id.start);
         stop = (FloatingActionButton) findViewById(R.id.stop);
         sensorDelay = (RadioGroup) findViewById(R.id.sensor_delay);
@@ -87,31 +132,53 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         destinationHost.setText(preferences.getDestinationHost());
         destinationPort.setText(String.valueOf(preferences.getDestinationPort()));
         updateUI();
-
-        SensorService.add(this);
-        NetworkService.add(this);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        SensorService.remove(this);
-        NetworkService.remove(this);
     }
 
     private void updateUI() {
+        UIState state = NetworkService.isRunning() ? UIState.RUNNING : UIState.SETUP;
+        updateUI(state);
+    }
+
+    private void updateUI(final UIState state) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (SensorService.isRunning() && NetworkService.isRunning()) {
-                    start.setVisibility(View.GONE);
-                    stop.setVisibility(View.VISIBLE);
-                    info.setVisibility(View.VISIBLE);
-                } else {
-                    start.setVisibility(View.VISIBLE);
-                    stop.setVisibility(View.GONE);
-                    info.setVisibility(View.GONE);
+                switch (state) {
+                    case SETUP: {
+                        setup.setVisibility(View.VISIBLE);
+                        waiting.setVisibility(View.GONE);
+                        running.setVisibility(View.GONE);
+                        sensorManager.unregisterListener(MainActivity.this, RotationApplication.getInstance().getSensor());
+                        break;
+                    }
+                    case WAITING: {
+                        waiting.setVisibility(View.VISIBLE);
+                        break;
+                    }
+                    case RUNNING: {
+                        setup.setVisibility(View.GONE);
+                        waiting.setVisibility(View.GONE);
+                        sensorManager.registerListener(MainActivity.this, RotationApplication.getInstance().getSensor(), SensorManager.SENSOR_DELAY_UI);
+                        running.setVisibility(View.VISIBLE);
+                        break;
+                    }
+                    default:
+                        throw new IllegalStateException();
                 }
+            }
+        });
+    }
+
+    private void updateUIInfo(final String info) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                MainActivity.this.info.setText(info);
             }
         });
     }
@@ -124,12 +191,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.start: {
+                MainActivity.this.updateUI(UIState.WAITING);
                 String host = preferences.getDestinationHost();
                 int port = preferences.getDestinationPort();
                 NetworkService.start(getApplicationContext(), host, port);
                 break;
             }
             case R.id.stop: {
+                MainActivity.this.updateUI(UIState.WAITING);
                 NetworkService.stop(getApplicationContext());
                 break;
             }
@@ -176,26 +245,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onSensorServiceCreate(SensorService service) {
-        updateUI();
-    }
-
-    @Override
-    public void onSensorServiceDestroy(SensorService service) {
-        updateUI();
-    }
-
-    @Override
-    public Sensor getSensor() {
-        return RotationApplication.getInstance().getSensor();
-    }
-
-    @Override
-    public int getSensorDelay() {
-        return preferences.getSensorDelay();
-    }
-
-    @Override
     public void onSensorChanged(SensorEvent event) {
         final StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(event.timestamp);
@@ -207,26 +256,49 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             stringBuilder.append(' ');
             stringBuilder.append(Float.toString(event.values[i]));
         }
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                info.setText(stringBuilder.toString());
-            }
-        });
+        updateUIInfo(stringBuilder.toString());
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // ignored
     }
 
-    @Override
-    public void onNetworkServiceCreate(NetworkService service) {
-        updateUI();
+    private enum UIState {
+        SETUP, WAITING, RUNNING
     }
 
-    @Override
-    public void onNetworkServiceDestroy(NetworkService service) {
-        updateUI();
+    public class NetworkServiceBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null) {
+                final String action = intent.getAction();
+                if (ACTION_NETWORK_STARTED.equals(action)) {
+                    handleActionNetworkStart();
+                } else if (ACTION_NETWORK_STOPPED.equals(action)) {
+                    handleActionNetworkStop();
+                } else if (ACTION_NETWORK_FAILED.equals(action)) {
+                    final Exception e = (Exception) intent.getSerializableExtra(EXTRA_EXCEPTION);
+                    handleActionNetworkFail(e);
+                } else {
+                    throw new IllegalArgumentException();
+                }
+            }
+        }
+
+        public void handleActionNetworkStart() {
+            MainActivity.this.updateUI(UIState.RUNNING);
+        }
+
+        public void handleActionNetworkStop() {
+            MainActivity.this.updateUI(UIState.SETUP);
+        }
+
+        public void handleActionNetworkFail(Exception e) {
+            MainActivity.this.updateUI(UIState.SETUP);
+            e.printStackTrace();
+            Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning(e.getLocalizedMessage());
+            View container = findViewById(R.id.container);
+            Snackbar.make(container, e.getLocalizedMessage(), Snackbar.LENGTH_SHORT);
+        }
     }
 }
