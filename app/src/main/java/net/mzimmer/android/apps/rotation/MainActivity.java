@@ -199,7 +199,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 				try {
 					port = Integer.parseInt(text);
 					preferences.setDestinationPort(port);
-					if (port < 0 || port > 65535) {
+					if (port < 1 || port > 65535) {
 						destinationPort.setError(getString(R.string.invalid_port));
 					} else {
 						destinationPort.setError(null);

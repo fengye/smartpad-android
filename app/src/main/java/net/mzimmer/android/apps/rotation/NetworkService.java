@@ -129,7 +129,16 @@ public class NetworkService extends Service implements SensorEventListener {
 		try {
 			DatagramPacket packet = factory.from(event);
 			initSocket();
-			socket.send(packet);
+			try {
+				socket.send(packet);
+			} catch (SocketException e) {
+				if (socket.getPort() == -1) {
+					stopSelf();
+					MainActivity.triggerNetworkFailedInvalidPort(getApplicationContext());
+				} else {
+					throw e;
+				}
+			}
 		} catch (IOException e) {
 			stopSelf();
 			MainActivity.triggerNetworkFailed(getApplicationContext(), e);
