@@ -16,6 +16,7 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.SparseIntArray;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -23,8 +24,6 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, RadioGroup.OnCheckedChangeListener, OnTextChangeListener, SensorEventListener {
@@ -36,7 +35,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 	private static final String EXTRA_EXCEPTION;
 
-	private static final HashMap<Integer, Integer> SENSOR_DELAY_RADIO_BUTTON_IDS;
+	private static final SparseIntArray SENSOR_DELAY_RADIO_BUTTON_IDS;
 
 	static {
 		ACTION_NETWORK_STARTED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.started";
@@ -47,7 +46,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 		EXTRA_EXCEPTION = "net.mzimmer.android.apps.rotation.NetworkService.extra.exception";
 
-		SENSOR_DELAY_RADIO_BUTTON_IDS = new HashMap<>();
+		SENSOR_DELAY_RADIO_BUTTON_IDS = new SparseIntArray(4);
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_FASTEST, R.id.sensor_delay_fastest);
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_GAME, R.id.sensor_delay_game);
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_NORMAL, R.id.sensor_delay_normal);
@@ -90,19 +89,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	}
 
 	private static int getSensorDelayRadioButtonIdFromValue(int value) {
-		if (!SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
+		if (SENSOR_DELAY_RADIO_BUTTON_IDS.indexOfKey(value) < 0) {
 			throw new IllegalArgumentException();
 		}
 		return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
 	}
 
 	private static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
-		for (Map.Entry<Integer, Integer> entry : SENSOR_DELAY_RADIO_BUTTON_IDS.entrySet()) {
-			if (radioButtonId == entry.getValue()) {
-				return entry.getKey();
-			}
+		int index = SENSOR_DELAY_RADIO_BUTTON_IDS.indexOfValue(radioButtonId);
+		if (index < 0) {
+			throw new IllegalArgumentException();
 		}
-		throw new IllegalArgumentException();
+		return SENSOR_DELAY_RADIO_BUTTON_IDS.keyAt(index);
 	}
 
 	private Handler handler;
@@ -149,7 +147,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		
+
 		unregisterSensorListener();
 		unregisterNetworkServiceBroadcastReceiver();
 	}
