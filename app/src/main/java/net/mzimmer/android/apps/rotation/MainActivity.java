@@ -11,6 +11,7 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -111,6 +112,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	private ViewGroup setup;
 	private ViewGroup waiting;
 	private ViewGroup running;
+	private FloatingActionButton start;
+	private FloatingActionButton stop;
 	private EditText destinationHost;
 	private EditText destinationPort;
 	private TextView info;
@@ -127,9 +130,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		setup = (ViewGroup) findViewById(R.id.setup);
 		waiting = (ViewGroup) findViewById(R.id.waiting);
 		running = (ViewGroup) findViewById(R.id.running);
-		android.support.design.widget.FloatingActionButton start = (android.support.design.widget.FloatingActionButton) findViewById(net.mzimmer.android.apps.rotation.R.id.start);
-		android.support.design.widget.FloatingActionButton stop = (android.support.design.widget.FloatingActionButton) findViewById(net.mzimmer.android.apps.rotation.R.id.stop);
-		android.widget.RadioGroup sensorDelay = (android.widget.RadioGroup) findViewById(net.mzimmer.android.apps.rotation.R.id.sensor_delay);
+		start = (FloatingActionButton) findViewById(R.id.start);
+		stop = (FloatingActionButton) findViewById(R.id.stop);
+		RadioGroup sensorDelay = (RadioGroup) findViewById(R.id.sensor_delay);
 		destinationHost = (EditText) findViewById(R.id.destination_host);
 		destinationPort = (EditText) findViewById(R.id.destination_port);
 		info = (TextView) findViewById(R.id.info);
@@ -146,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
+		
 		unregisterSensorListener();
 		unregisterNetworkServiceBroadcastReceiver();
 	}
@@ -248,21 +252,33 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						getSensorDelayRadioButtonFromValue(preferences.getSensorDelay()).setChecked(true);
 						destinationHost.setText(preferences.getDestinationHost());
 						destinationPort.setText(String.valueOf(preferences.getDestinationPort()));
+
 						setup.setVisibility(View.VISIBLE);
 						waiting.setVisibility(View.GONE);
 						running.setVisibility(View.GONE);
+						start.setVisibility(View.VISIBLE);
+						stop.setVisibility(View.GONE);
+
 						unregisterSensorListener();
+
 						break;
 					}
 					case WAITING: {
 						waiting.setVisibility(View.VISIBLE);
+
 						break;
 					}
 					case RUNNING: {
+						updateUIInfo("");
+
 						setup.setVisibility(View.GONE);
 						waiting.setVisibility(View.GONE);
-						registerSensorListener();
 						running.setVisibility(View.VISIBLE);
+						start.setVisibility(View.GONE);
+						stop.setVisibility(View.VISIBLE);
+
+						registerSensorListener();
+
 						break;
 					}
 					default:
