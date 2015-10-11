@@ -85,10 +85,8 @@ public class NetworkService extends Service implements SensorEventListener {
 						final int sensorDelay = intent.getIntExtra(EXTRA_SENSOR_DELAY, SensorManager.SENSOR_DELAY_UI);
 
 						registerSensorListener(sensorDelay);
+						displayNotification(buildNotification(address));
 						MainActivity.triggerNetworkStarted(getApplicationContext());
-
-						Notification notification = buildNotification(address);
-						displayNotification(notification);
 					} catch (UnknownHostException e) {
 						MainActivity.triggerNetworkFailedInvalidHost(getApplicationContext());
 						stopSelf();
@@ -111,6 +109,13 @@ public class NetworkService extends Service implements SensorEventListener {
 		cancelNotification();
 
 		MainActivity.triggerNetworkStopped(getApplicationContext());
+	}
+
+	@Override
+	public void onTaskRemoved(Intent rootIntent) {
+		super.onTaskRemoved(rootIntent);
+
+		stopSelf();
 	}
 
 	@Nullable
