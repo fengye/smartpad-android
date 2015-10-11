@@ -1,13 +1,13 @@
 <resources>
-    <string name="rotation">Rotation</string>
-    <string name="sensor_delay">Sensor delay</string>
-    <string name="sensor_delay_fastest">none</string>
-    <string name="sensor_delay_game">fast</string>
-    <string name="sensor_delay_normal">normal</string>
-    <string name="sensor_delay_ui">slow</string>
-    <string name="destination_host">Destination host</string>
-    <string name="destination_port">Destination port</string>
-    <string name="unable_to_parse_port">Unable to parse port</string>
-    <string name="streaming_to">Streaming to</string>
-    <string name="stop">Stop</string>
+	<string name="rotation">Rotation</string>
+	<string name="sensor_delay">Sensor delay</string>
+	<string name="sensor_delay_fastest">none</string>
+	<string name="sensor_delay_game">fast</string>
+	<string name="sensor_delay_normal">normal</string>
+	<string name="sensor_delay_ui">slow</string>
+	<string name="destination_host">Destination host</string>
+	<string name="destination_port">Destination port</string>
+	<string name="unable_to_parse_port">Unable to parse port</string>
+	<string name="streaming_to">Streaming to</string>
+	<string name="stop">Stop</string>
 </resources>

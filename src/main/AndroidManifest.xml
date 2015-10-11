@@ -1,26 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="net.mzimmer.android.apps.rotation">
+	package="net.mzimmer.android.apps.rotation">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <application
-        android:name=".RotationApplication"
-        android:allowBackup="true"
-        android:icon="@mipmap/rotation"
-        android:label="@string/rotation"
-        android:supportsRtl="true"
-        android:theme="@style/AppTheme">
-        <activity
-            android:name=".MainActivity"
-            android:label="@string/rotation"
-            android:theme="@style/AppTheme.NoActionBar">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <service
-            android:name=".NetworkService"
-            android:exported="false" />
-    </application>
+	<uses-permission android:name="android.permission.INTERNET" />
+
+	<application
+		android:name=".RotationApplication"
+		android:allowBackup="true"
+		android:icon="@mipmap/rotation"
+		android:label="@string/rotation"
+		android:supportsRtl="true"
+		android:theme="@style/AppTheme">
+
+		<activity
+			android:name=".MainActivity"
+			android:label="@string/rotation"
+			android:theme="@style/AppTheme.NoActionBar">
+
+			<intent-filter>
+
+				<action android:name="android.intent.action.MAIN" />
+
+				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
+
+		<service
+			android:name=".NetworkService"
+			android:exported="false" />
+
+		<receiver
+			android:name=".NetworkService$Stop"
+			android:exported="false" />
+	</application>
 </manifest>
