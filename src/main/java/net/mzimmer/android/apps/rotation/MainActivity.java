@@ -11,7 +11,6 @@ import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
@@ -31,6 +30,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	private static final String ACTION_NETWORK_STARTED;
 	private static final String ACTION_NETWORK_STOPPED;
 	private static final String ACTION_NETWORK_FAILED;
+	private static final String ACTION_NETWORK_FAILED_INVALID_HOST;
+	private static final String ACTION_NETWORK_FAILED_INVALID_PORT;
 
 	private static final String EXTRA_EXCEPTION;
 
@@ -40,6 +41,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		ACTION_NETWORK_STARTED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.started";
 		ACTION_NETWORK_STOPPED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.stopped";
 		ACTION_NETWORK_FAILED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed";
+		ACTION_NETWORK_FAILED_INVALID_HOST = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed.invalidHost";
+		ACTION_NETWORK_FAILED_INVALID_PORT = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed.invalidPort";
 
 		EXTRA_EXCEPTION = "net.mzimmer.android.apps.rotation.NetworkService.extra.exception";
 
@@ -49,20 +52,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_NORMAL, R.id.sensor_delay_normal);
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_UI, R.id.sensor_delay_ui);
 	}
-
-	private Handler handler;
-	private NetworkServiceBroadcastReceiver networkServiceBroadcastReceiver;
-	private SensorManager sensorManager;
-	private Preferences preferences;
-	private ViewGroup setup;
-	private ViewGroup waiting;
-	private ViewGroup running;
-	private FloatingActionButton start;
-	private FloatingActionButton stop;
-	private RadioGroup sensorDelay;
-	private EditText destinationHost;
-	private EditText destinationPort;
-	private TextView info;
 
 	public static Intent viewIntent(Context context) {
 		return new Intent(context, MainActivity.class);
@@ -87,6 +76,45 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 	}
 
+	public static void triggerNetworkFailedInvalidHost(Context context) {
+		Intent intent = new Intent(context, MainActivity.NetworkServiceBroadcastReceiver.class);
+		intent.setAction(ACTION_NETWORK_FAILED_INVALID_HOST);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+	}
+
+	public static void triggerNetworkFailedInvalidPort(Context context) {
+		Intent intent = new Intent(context, MainActivity.NetworkServiceBroadcastReceiver.class);
+		intent.setAction(ACTION_NETWORK_FAILED_INVALID_PORT);
+		LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+	}
+
+	private static int getSensorDelayRadioButtonIdFromValue(int value) {
+		if (!SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
+			throw new IllegalArgumentException();
+		}
+		return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
+	}
+
+	private static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
+		for (Map.Entry<Integer, Integer> entry : SENSOR_DELAY_RADIO_BUTTON_IDS.entrySet()) {
+			if (radioButtonId == entry.getValue()) {
+				return entry.getKey();
+			}
+		}
+		throw new IllegalArgumentException();
+	}
+
+	private Handler handler;
+	private NetworkServiceBroadcastReceiver networkServiceBroadcastReceiver;
+	private SensorManager sensorManager;
+	private Preferences preferences;
+	private ViewGroup setup;
+	private ViewGroup waiting;
+	private ViewGroup running;
+	private EditText destinationHost;
+	private EditText destinationPort;
+	private TextView info;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -95,13 +123,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		setSupportActionBar(toolbar);
 
 		registerNetworkServiceBroadcastReceiver();
-		preferences = RotationApplication.getInstance().getPreferences();
+		preferences = new Preferences(getApplicationContext());
 		setup = (ViewGroup) findViewById(R.id.setup);
 		waiting = (ViewGroup) findViewById(R.id.waiting);
 		running = (ViewGroup) findViewById(R.id.running);
-		start = (FloatingActionButton) findViewById(R.id.start);
-		stop = (FloatingActionButton) findViewById(R.id.stop);
-		sensorDelay = (RadioGroup) findViewById(R.id.sensor_delay);
+		android.support.design.widget.FloatingActionButton start = (android.support.design.widget.FloatingActionButton) findViewById(net.mzimmer.android.apps.rotation.R.id.start);
+		android.support.design.widget.FloatingActionButton stop = (android.support.design.widget.FloatingActionButton) findViewById(net.mzimmer.android.apps.rotation.R.id.stop);
+		android.widget.RadioGroup sensorDelay = (android.widget.RadioGroup) findViewById(net.mzimmer.android.apps.rotation.R.id.sensor_delay);
 		destinationHost = (EditText) findViewById(R.id.destination_host);
 		destinationPort = (EditText) findViewById(R.id.destination_port);
 		info = (TextView) findViewById(R.id.info);
@@ -115,24 +143,100 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		updateUI();
 	}
 
-	private void registerNetworkServiceBroadcastReceiver() {
-		initNetworkServiceBroadcastReceiver();
-		LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getApplicationContext());
-		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STARTED));
-		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STOPPED));
-		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_FAILED));
-		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered main activities network service broadcast receiver");
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+		unregisterSensorListener();
+		unregisterNetworkServiceBroadcastReceiver();
+	}
+
+	@Override
+	public void onClick(View view) {
+		switch (view.getId()) {
+			case R.id.start: {
+				MainActivity.this.updateUI(UIState.WAITING);
+				String host = preferences.getDestinationHost();
+				int port = preferences.getDestinationPort();
+				int sensorDelay = preferences.getSensorDelay();
+				NetworkService.start(getApplicationContext(), host, port, sensorDelay);
+				break;
+			}
+			case R.id.stop: {
+				MainActivity.this.updateUI(UIState.WAITING);
+				NetworkService.stop(getApplicationContext());
+				break;
+			}
+			default:
+				throw new IllegalStateException();
+		}
+	}
+
+	@Override
+	public void onCheckedChanged(RadioGroup group, int checkedId) {
+		switch (group.getId()) {
+			case R.id.sensor_delay: {
+				preferences.setSensorDelay(getSensorDelayValueFromRadioButtonId(checkedId));
+				break;
+			}
+			default:
+				throw new IllegalStateException();
+		}
+	}
+
+	@Override
+	public void onTextChange(TextView view, String text) {
+		switch (view.getId()) {
+			case R.id.destination_host: {
+				preferences.setDestinationHost(text);
+				break;
+			}
+			case R.id.destination_port: {
+				int port;
+				try {
+					port = Integer.parseInt(text);
+					preferences.setDestinationPort(port);
+					if (port < 0 || port > 65535) {
+						destinationPort.setError(getString(R.string.invalid_port));
+					} else {
+						destinationPort.setError(null);
+					}
+				} catch (NumberFormatException e) {
+					preferences.setDestinationPort(-1);
+					destinationPort.setError(getString(R.string.unable_to_parse_integer));
+				}
+				break;
+			}
+			default:
+				throw new IllegalStateException();
+		}
+	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		final StringBuilder stringBuilder = new StringBuilder();
+		stringBuilder.append(event.timestamp);
+		stringBuilder.append(System.getProperty("line.separator"));
+		for (int i = 0; i < event.values.length; ++i) {
+			stringBuilder.append(System.getProperty("line.separator"));
+			stringBuilder.append(i);
+			stringBuilder.append(':');
+			stringBuilder.append(' ');
+			stringBuilder.append(Float.toString(event.values[i]));
+		}
+		updateUIInfo(stringBuilder.toString());
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+	}
+
+	private RadioButton getSensorDelayRadioButtonFromValue(int value) {
+		return ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(value)));
 	}
 
 	private void updateUI() {
 		UIState state = NetworkService.isRunning() ? UIState.RUNNING : UIState.SETUP;
 		updateUI(state);
-	}
-
-	private void initNetworkServiceBroadcastReceiver() {
-		if (networkServiceBroadcastReceiver == null) {
-			networkServiceBroadcastReceiver = new NetworkServiceBroadcastReceiver();
-		}
 	}
 
 	private void updateUI(final UIState state) {
@@ -168,34 +272,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		});
 	}
 
-	private RadioButton getSensorDelayRadioButtonFromValue(int value) {
-		return ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(value)));
-	}
-
-	private void unregisterSensorListener() {
-		initSensorListener();
-		sensorManager.unregisterListener(MainActivity.this, RotationApplication.getInstance().getSensor());
-		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered main activities sensor listener");
-	}
-
-	private void registerSensorListener() {
-		initSensorListener();
-		initHandler();
-		sensorManager.registerListener(MainActivity.this, RotationApplication.getInstance().getSensor(), SensorManager.SENSOR_DELAY_UI, handler);
-		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered main activities sensor listener");
-	}
-
-	private static int getSensorDelayRadioButtonIdFromValue(int value) {
-		if (!SENSOR_DELAY_RADIO_BUTTON_IDS.containsKey(value)) {
-			value = Preferences.DEFAULT_SENSOR_DELAY;
-		}
-		return SENSOR_DELAY_RADIO_BUTTON_IDS.get(value);
-	}
-
-	private void initSensorListener() {
-		if (sensorManager == null) {
-			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		}
+	private void updateUIInfo(final String info) {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				MainActivity.this.info.setText(info);
+			}
+		});
 	}
 
 	private void initHandler() {
@@ -206,11 +289,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		}
 	}
 
-	@Override
-	protected void onDestroy() {
-		super.onDestroy();
-		unregisterSensorListener();
-		unregisterNetworkServiceBroadcastReceiver();
+	private void initNetworkServiceBroadcastReceiver() {
+		if (networkServiceBroadcastReceiver == null) {
+			networkServiceBroadcastReceiver = new NetworkServiceBroadcastReceiver();
+		}
+	}
+
+	private void registerNetworkServiceBroadcastReceiver() {
+		initNetworkServiceBroadcastReceiver();
+		LocalBroadcastManager manager = LocalBroadcastManager.getInstance(getApplicationContext());
+		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STARTED));
+		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_STOPPED));
+		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_FAILED));
+		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_FAILED_INVALID_HOST));
+		manager.registerReceiver(networkServiceBroadcastReceiver, new IntentFilter(ACTION_NETWORK_FAILED_INVALID_PORT));
+		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered main activities network service broadcast receiver");
 	}
 
 	private void unregisterNetworkServiceBroadcastReceiver() {
@@ -220,98 +313,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered main activities network service broadcast receiver");
 	}
 
-	@Override
-	public void onClick(View view) {
-		switch (view.getId()) {
-			case R.id.start: {
-				MainActivity.this.updateUI(UIState.WAITING);
-				String host = preferences.getDestinationHost();
-				int port = preferences.getDestinationPort();
-				NetworkService.start(getApplicationContext(), host, port);
-				break;
-			}
-			case R.id.stop: {
-				MainActivity.this.updateUI(UIState.WAITING);
-				NetworkService.stop(getApplicationContext());
-				break;
-			}
-			default:
-				throw new IllegalStateException();
+	private void initSensorManager() {
+		if (sensorManager == null) {
+			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		}
 	}
 
-	@Override
-	public void onCheckedChanged(RadioGroup group, int checkedId) {
-		switch (group.getId()) {
-			case R.id.sensor_delay: {
-				preferences.setSensorDelay(getSensorDelayValueFromRadioButtonId(checkedId));
-				break;
-			}
-			default:
-				throw new IllegalStateException();
-		}
+	private void registerSensorListener() {
+		initSensorManager();
+		initHandler();
+		sensorManager.registerListener(MainActivity.this, RotationApplication.getSensor(), SensorManager.SENSOR_DELAY_UI, handler);
+		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered main activities sensor listener");
 	}
 
-	private static int getSensorDelayValueFromRadioButtonId(int radioButtonId) {
-		for (Map.Entry<Integer, Integer> entry : SENSOR_DELAY_RADIO_BUTTON_IDS.entrySet()) {
-			if (radioButtonId == entry.getValue()) {
-				return entry.getKey();
-			}
-		}
-		return Preferences.DEFAULT_SENSOR_DELAY;
-	}
-
-	@Override
-	public void onTextChange(TextView view, String text) {
-		switch (view.getId()) {
-			case R.id.destination_host: {
-				preferences.setDestinationHost(text);
-				break;
-			}
-			case R.id.destination_port: {
-				try {
-					int port = Integer.parseInt(text);
-					if (port < 0 || port > 65535) {
-						throw new NumberFormatException();
-					}
-					preferences.setDestinationPort(port);
-					destinationPort.setError(null);
-				} catch (NumberFormatException e) {
-					destinationPort.setError(getString(R.string.unable_to_parse_port));
-				}
-				break;
-			}
-			default:
-				throw new IllegalStateException();
-		}
-	}
-
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		final StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append(event.timestamp);
-		stringBuilder.append(System.getProperty("line.separator"));
-		for (int i = 0; i < event.values.length; ++i) {
-			stringBuilder.append(System.getProperty("line.separator"));
-			stringBuilder.append(i);
-			stringBuilder.append(':');
-			stringBuilder.append(' ');
-			stringBuilder.append(Float.toString(event.values[i]));
-		}
-		updateUIInfo(stringBuilder.toString());
-	}
-
-	private void updateUIInfo(final String info) {
-		runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				MainActivity.this.info.setText(info);
-			}
-		});
-	}
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+	private void unregisterSensorListener() {
+		initSensorManager();
+		sensorManager.unregisterListener(MainActivity.this, RotationApplication.getSensor());
+		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered main activities sensor listener");
 	}
 
 	private enum UIState {
@@ -324,32 +342,49 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 			if (intent != null) {
 				final String action = intent.getAction();
 				if (ACTION_NETWORK_STARTED.equals(action)) {
-					handleActionNetworkStart();
+					handleActionNetworkStarted();
 				} else if (ACTION_NETWORK_STOPPED.equals(action)) {
-					handleActionNetworkStop();
+					handleActionNetworkStopped();
 				} else if (ACTION_NETWORK_FAILED.equals(action)) {
 					final Exception e = (Exception) intent.getSerializableExtra(EXTRA_EXCEPTION);
-					handleActionNetworkFail(e);
+					handleActionNetworkFailed(e);
+				} else if (ACTION_NETWORK_FAILED_INVALID_HOST.equals(action)) {
+					handleActionNetworkFailedInvalidHost();
+				} else if (ACTION_NETWORK_FAILED_INVALID_PORT.equals(action)) {
+					handleActionNetworkFailedInvalidPort();
 				} else {
 					throw new IllegalArgumentException();
 				}
 			}
 		}
 
-		public void handleActionNetworkStart() {
+		public void handleActionNetworkStarted() {
 			MainActivity.this.updateUI(UIState.RUNNING);
 		}
 
-		public void handleActionNetworkStop() {
+		public void handleActionNetworkStopped() {
 			MainActivity.this.updateUI(UIState.SETUP);
 		}
 
-		public void handleActionNetworkFail(Exception e) {
+		public void handleActionNetworkFailed(Exception e) {
 			MainActivity.this.updateUI(UIState.SETUP);
 			e.printStackTrace();
-			Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).warning(e.getLocalizedMessage());
 			View container = findViewById(R.id.container);
-			Snackbar.make(container, e.getLocalizedMessage(), Snackbar.LENGTH_SHORT);
+			Snackbar.make(container, e.getLocalizedMessage(), android.support.design.widget.Snackbar.LENGTH_LONG).show();
+		}
+
+		public void handleActionNetworkFailedInvalidHost() {
+			MainActivity.this.updateUI(UIState.SETUP);
+			View container = findViewById(R.id.container);
+			Snackbar.make(container, getString(R.string.invalid_host), android.support.design.widget.Snackbar.LENGTH_LONG).show();
+			destinationHost.requestFocus();
+		}
+
+		public void handleActionNetworkFailedInvalidPort() {
+			MainActivity.this.updateUI(UIState.SETUP);
+			View container = findViewById(R.id.container);
+			Snackbar.make(container, getString(R.string.invalid_port), android.support.design.widget.Snackbar.LENGTH_LONG).show();
+			destinationPort.requestFocus();
 		}
 	}
 }

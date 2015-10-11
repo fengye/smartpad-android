@@ -4,7 +4,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.TextView;
 
-public interface OnTextChangeListener {
+interface OnTextChangeListener {
 	void onTextChange(TextView view, String text);
 
 	class Helper {

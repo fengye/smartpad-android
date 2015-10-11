@@ -6,31 +6,16 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 
 public class RotationApplication extends Application {
-	private static RotationApplication instance;
-	private Preferences preferences;
-	private Sensor sensor;
+	private static Sensor sensor;
 
-	public static RotationApplication getInstance() {
-		return instance;
+	public static Sensor getSensor() {
+		return sensor;
 	}
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
-
-		instance = this;
-		preferences = new Preferences(getApplicationContext());
-	}
-
-	public Preferences getPreferences() {
-		return preferences;
-	}
-
-	public Sensor getSensor() {
-		if (sensor == null) {
-			SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-			sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-		}
-		return sensor;
+		SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
 	}
 }

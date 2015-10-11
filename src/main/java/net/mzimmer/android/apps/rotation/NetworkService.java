@@ -29,6 +29,7 @@ import java.util.logging.Logger;
 public class NetworkService extends Service implements SensorEventListener {
 	private static final String EXTRA_HOST;
 	private static final String EXTRA_PORT;
+	private static final String EXTRA_SENSOR_DELAY;
 
 	private static final int NOTIFICATION_ID;
 	private static boolean running;
@@ -36,21 +37,17 @@ public class NetworkService extends Service implements SensorEventListener {
 	static {
 		EXTRA_HOST = "net.mzimmer.android.apps.rotation.NetworkService.extra.host";
 		EXTRA_PORT = "net.mzimmer.android.apps.rotation.NetworkService.extra.port";
+		EXTRA_SENSOR_DELAY = "net.mzimmer.android.apps.rotation.NetworkService.extra.sensorDelay";
 
 		NOTIFICATION_ID = 0;
 		running = false;
 	}
 
-	private Handler handler;
-	private DatagramSocket socket;
-	private SensorEventPacketFactory factory;
-	private NotificationManager notificationManager;
-	private SensorManager sensorManager;
-
-	public static void start(Context context, String host, int port) {
+	public static void start(Context context, String host, int port, int sensorDelay) {
 		Intent intent = new Intent(context, NetworkService.class);
 		intent.putExtra(EXTRA_HOST, host);
 		intent.putExtra(EXTRA_PORT, port);
+		intent.putExtra(EXTRA_SENSOR_DELAY, sensorDelay);
 		context.startService(intent);
 	}
 
@@ -62,6 +59,12 @@ public class NetworkService extends Service implements SensorEventListener {
 	public static boolean isRunning() {
 		return running;
 	}
+
+	private Handler handler;
+	private DatagramSocket socket;
+	private SensorEventPacketFactory factory;
+	private NotificationManager notificationManager;
+	private SensorManager sensorManager;
 
 	@Override
 	public int onStartCommand(final Intent intent, int flags, int startId) {
@@ -79,13 +82,18 @@ public class NetworkService extends Service implements SensorEventListener {
 						InetSocketAddress address = new InetSocketAddress(InetAddress.getByName(host), port);
 						factory = new SensorEventPacketFactory(address);
 
-						registerSensorListener();
+						final int sensorDelay = intent.getIntExtra(EXTRA_SENSOR_DELAY, SensorManager.SENSOR_DELAY_UI);
+
+						registerSensorListener(sensorDelay);
 						MainActivity.triggerNetworkStarted(getApplicationContext());
 
 						Notification notification = buildNotification(address);
 						displayNotification(notification);
 					} catch (UnknownHostException e) {
-						MainActivity.triggerNetworkFailed(getApplicationContext(), e);
+						MainActivity.triggerNetworkFailedInvalidHost(getApplicationContext());
+						stopSelf();
+					} catch (IllegalArgumentException e) {
+						MainActivity.triggerNetworkFailedInvalidPort(getApplicationContext());
 						stopSelf();
 					}
 				}
@@ -93,6 +101,38 @@ public class NetworkService extends Service implements SensorEventListener {
 		}
 
 		return Service.START_STICKY;
+	}
+
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+
+		unregisterSensorListener();
+		cancelNotification();
+
+		MainActivity.triggerNetworkStopped(getApplicationContext());
+	}
+
+	@Nullable
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
+	}
+
+	@Override
+	public void onSensorChanged(final SensorEvent event) {
+		try {
+			DatagramPacket packet = factory.from(event);
+			initSocket();
+			socket.send(packet);
+		} catch (IOException e) {
+			stopSelf();
+			MainActivity.triggerNetworkFailed(getApplicationContext(), e);
+		}
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 	}
 
 	private void initHandler() {
@@ -103,12 +143,31 @@ public class NetworkService extends Service implements SensorEventListener {
 		}
 	}
 
-	private void registerSensorListener() {
+	private void initSensorManager() {
+		if (sensorManager == null) {
+			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+		}
+	}
+
+	private void registerSensorListener(int sensorDelay) {
 		initSensorManager();
 		initHandler();
-		sensorManager.registerListener(NetworkService.this, RotationApplication.getInstance().getSensor(), RotationApplication.getInstance().getPreferences().getSensorDelay(), handler);
+		sensorManager.registerListener(NetworkService.this, RotationApplication.getSensor(), sensorDelay, handler);
 		running = true;
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered network service' sensor listener");
+	}
+
+	private void unregisterSensorListener() {
+		initSensorManager();
+		running = false;
+		sensorManager.unregisterListener(this, RotationApplication.getSensor());
+		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered network service' sensor listener");
+	}
+
+	private void initNotificationManager() {
+		if (notificationManager == null) {
+			notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		}
 	}
 
 	private Notification buildNotification(InetSocketAddress address) {
@@ -134,66 +193,15 @@ public class NetworkService extends Service implements SensorEventListener {
 		notificationManager.notify(NOTIFICATION_ID, notification);
 	}
 
-	private void initSensorManager() {
-		if (sensorManager == null) {
-			sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		}
-	}
-
-	private void initNotificationManager() {
-		if (notificationManager == null) {
-			notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		}
-	}
-
-	@Override
-	public void onDestroy() {
-		super.onDestroy();
-
-		unregisterSensorListener();
-		cancelNotification();
-
-		MainActivity.triggerNetworkStopped(getApplicationContext());
-	}
-
-	private void unregisterSensorListener() {
-		initSensorManager();
-		running = false;
-		sensorManager.unregisterListener(this, RotationApplication.getInstance().getSensor());
-		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered network service' sensor listener");
-	}
-
 	private void cancelNotification() {
 		initNotificationManager();
 		notificationManager.cancel(NOTIFICATION_ID);
-	}
-
-	@Nullable
-	@Override
-	public IBinder onBind(Intent intent) {
-		return null;
-	}
-
-	@Override
-	public void onSensorChanged(final SensorEvent event) {
-		try {
-			DatagramPacket packet = factory.createDatagramPacket(event);
-			initSocket();
-			socket.send(packet);
-		} catch (IOException e) {
-			stopSelf();
-			MainActivity.triggerNetworkFailed(getApplicationContext(), e);
-		}
 	}
 
 	private void initSocket() throws SocketException {
 		if (socket == null) {
 			socket = new DatagramSocket();
 		}
-	}
-
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 	}
 
 	public static class Stop extends BroadcastReceiver {

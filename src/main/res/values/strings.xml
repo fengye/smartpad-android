@@ -7,7 +7,9 @@
 	<string name="sensor_delay_ui">slow</string>
 	<string name="destination_host">Destination host</string>
 	<string name="destination_port">Destination port</string>
-	<string name="unable_to_parse_port">Unable to parse port</string>
+	<string name="unable_to_parse_integer">Unable to parse port</string>
+	<string name="invalid_host">Invalid host</string>
+	<string name="invalid_port">Invalid port</string>
 	<string name="streaming_to">Streaming to</string>
 	<string name="stop">Stop</string>
 </resources>
