@@ -16,10 +16,9 @@ class SensorEventPacketFactory {
 	}
 
 	public DatagramPacket from(SensorEvent event) throws SocketException {
-		ByteBuffer byteBuffer = ByteBuffer.allocate(8 + 4 + 4 * event.values.length).order(ByteOrder.LITTLE_ENDIAN);
+		ByteBuffer byteBuffer = ByteBuffer.allocate(8 + 4 * 4).order(ByteOrder.BIG_ENDIAN);
 		byteBuffer.putLong(event.timestamp);
-		byteBuffer.putInt(event.values.length);
-		for (int i = 0; i < event.values.length; ++i) {
+		for (int i = 0; i < 4; ++i) {
 			byteBuffer.putFloat(event.values[i]);
 		}
 		byte[] data = byteBuffer.array();
