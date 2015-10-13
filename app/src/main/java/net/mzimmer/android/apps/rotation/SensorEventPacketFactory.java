@@ -9,6 +9,13 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 class SensorEventPacketFactory {
+	public static final int EXPONENT = -9;
+	public static final int FACTOR;
+
+	static {
+		FACTOR = (int) Math.pow(10, -EXPONENT);
+	}
+
 	private final SocketAddress socketAddress;
 
 	public SensorEventPacketFactory(SocketAddress socketAddress) {
