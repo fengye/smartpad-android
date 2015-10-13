@@ -216,15 +216,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		final StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append(event.timestamp);
-		stringBuilder.append(System.getProperty("line.separator"));
-		for (int i = 0; i < event.values.length; ++i) {
-			stringBuilder.append(System.getProperty("line.separator"));
-			stringBuilder.append(i);
-			stringBuilder.append(':');
-			stringBuilder.append(' ');
-			stringBuilder.append(Float.toString(event.values[i]));
-		}
+		stringBuilder.append("x: ");
+		stringBuilder.append(Float.toString(event.values[0]));
+		stringBuilder.append("\ny: ");
+		stringBuilder.append(Float.toString(event.values[1]));
+		stringBuilder.append("\nz: ");
+		stringBuilder.append(Float.toString(event.values[2]));
+		stringBuilder.append("\nw: ");
+		stringBuilder.append(Float.toString(event.values[3]));
 		updateUIInfo(stringBuilder.toString());
 	}
 
