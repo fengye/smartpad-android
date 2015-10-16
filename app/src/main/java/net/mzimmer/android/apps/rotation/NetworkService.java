@@ -14,6 +14,7 @@ import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 
@@ -60,6 +61,8 @@ public class NetworkService extends Service implements SensorEventListener {
 		return running;
 	}
 
+	private PowerManager powerManager;
+	private PowerManager.WakeLock wakeLock;
 	private Handler handler;
 	private DatagramSocket socket;
 	private SensorEventPacketFactory factory;
@@ -84,6 +87,7 @@ public class NetworkService extends Service implements SensorEventListener {
 
 						final int sensorDelay = intent.getIntExtra(EXTRA_SENSOR_DELAY, SensorManager.SENSOR_DELAY_UI);
 
+						acquireWakeLock();
 						registerSensorListener(sensorDelay);
 						displayNotification(buildNotification(address));
 						MainActivity.triggerNetworkStarted(getApplicationContext());
@@ -105,9 +109,9 @@ public class NetworkService extends Service implements SensorEventListener {
 	public void onDestroy() {
 		super.onDestroy();
 
-		unregisterSensorListener();
 		cancelNotification();
-
+		unregisterSensorListener();
+		releaseWakeLock();
 		MainActivity.triggerNetworkStopped(getApplicationContext());
 	}
 
@@ -147,6 +151,29 @@ public class NetworkService extends Service implements SensorEventListener {
 
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+	}
+
+	private void initPowerManager() {
+		if (powerManager == null) {
+			powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+		}
+	}
+
+	private void initWakeLock() {
+		if (wakeLock == null) {
+			initPowerManager();
+			wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NetworkServiceWakeLock");
+		}
+	}
+
+	private void acquireWakeLock() {
+		initWakeLock();
+		wakeLock.acquire(8 * 60 * 60 * 1000);
+	}
+
+	private void releaseWakeLock() {
+		initWakeLock();
+		wakeLock.release();
 	}
 
 	private void initHandler() {
