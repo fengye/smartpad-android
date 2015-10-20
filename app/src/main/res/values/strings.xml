@@ -1,10 +1,10 @@
 <resources>
 	<string name="rotation">Rotation</string>
-	<string name="sensor_delay">Sensor delay</string>
-	<string name="sensor_delay_fastest">none</string>
-	<string name="sensor_delay_game">fast</string>
-	<string name="sensor_delay_normal">normal</string>
-	<string name="sensor_delay_ui">slow</string>
+	<string name="sensor_delay">Sensor delay (microseconds)</string>
+	<string name="sensor_delay_fastest">Fastest (~0)</string>
+	<string name="sensor_delay_game">Game (~20000)</string>
+	<string name="sensor_delay_ui">UI (~66667)</string>
+	<string name="sensor_delay_normal">Normal (~200000)</string>
 	<string name="destination_host">Destination host</string>
 	<string name="destination_port">Destination port</string>
 	<string name="unable_to_parse_integer">Unable to parse port</string>

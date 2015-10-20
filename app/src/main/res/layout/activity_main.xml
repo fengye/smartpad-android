@@ -58,15 +58,15 @@
 					             android:layout_height="wrap_content"
 					             android:text="@string/sensor_delay_game" />
 
-					<RadioButton android:id="@+id/sensor_delay_normal"
-					             android:layout_width="wrap_content"
-					             android:layout_height="wrap_content"
-					             android:text="@string/sensor_delay_normal" />
-
 					<RadioButton android:id="@+id/sensor_delay_ui"
 					             android:layout_width="wrap_content"
 					             android:layout_height="wrap_content"
 					             android:text="@string/sensor_delay_ui" />
+
+					<RadioButton android:id="@+id/sensor_delay_normal"
+								 android:layout_width="wrap_content"
+								 android:layout_height="wrap_content"
+								 android:text="@string/sensor_delay_normal" />
 				</RadioGroup>
 
 				<EditText android:id="@+id/destination_host"
