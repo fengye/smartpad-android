@@ -1,4 +1,4 @@
-package net.mzimmer.android.apps.rotation;
+package net.mzimmer.android.apps.smartpad;
 
 import android.text.Editable;
 import android.text.TextWatcher;

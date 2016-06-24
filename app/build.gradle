@@ -5,7 +5,7 @@ android {
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId "net.mzimmer.android.apps.rotation"
+        applicationId "net.mzimmer.android.apps.smartpad"
         minSdkVersion 9
         targetSdkVersion 22
         versionCode 1

@@ -1,4 +1,4 @@
-package net.mzimmer.android.apps.rotation;
+package net.mzimmer.android.apps.smartpad;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -38,13 +38,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	private static final SparseIntArray SENSOR_DELAY_RADIO_BUTTON_IDS;
 
 	static {
-		ACTION_NETWORK_STARTED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.started";
-		ACTION_NETWORK_STOPPED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.stopped";
-		ACTION_NETWORK_FAILED = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed";
-		ACTION_NETWORK_FAILED_INVALID_HOST = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed.invalidHost";
-		ACTION_NETWORK_FAILED_INVALID_PORT = "net.mzimmer.android.apps.rotation.NetworkService.action.network.failed.invalidPort";
+		ACTION_NETWORK_STARTED = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.started";
+		ACTION_NETWORK_STOPPED = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.stopped";
+		ACTION_NETWORK_FAILED = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.failed";
+		ACTION_NETWORK_FAILED_INVALID_HOST = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.failed.invalidHost";
+		ACTION_NETWORK_FAILED_INVALID_PORT = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.failed.invalidPort";
 
-		EXTRA_EXCEPTION = "net.mzimmer.android.apps.rotation.NetworkService.extra.exception";
+		EXTRA_EXCEPTION = "net.mzimmer.android.apps.smartpad.NetworkService.extra.exception";
 
 		SENSOR_DELAY_RADIO_BUTTON_IDS = new SparseIntArray(4);
 		SENSOR_DELAY_RADIO_BUTTON_IDS.put(SensorManager.SENSOR_DELAY_FASTEST, R.id.sensor_delay_fastest);
@@ -114,6 +114,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	private FloatingActionButton stop;
 	private EditText destinationHost;
 	private EditText destinationPort;
+	private TextView data;
 	private TextView info;
 
 	@Override
@@ -133,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		RadioGroup sensorDelay = (RadioGroup) findViewById(R.id.sensor_delay);
 		destinationHost = (EditText) findViewById(R.id.destination_host);
 		destinationPort = (EditText) findViewById(R.id.destination_port);
+		data = (TextView) findViewById(R.id.data);
 		info = (TextView) findViewById(R.id.info);
 
 		start.setOnClickListener(this);
@@ -141,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		OnTextChangeListener.Helper.register(destinationHost, this);
 		OnTextChangeListener.Helper.register(destinationPort, this);
 
-		updateUI();
+		initUI();
 	}
 
 	@Override
@@ -215,16 +217,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 	@Override
 	public void onSensorChanged(SensorEvent event) {
-		final StringBuilder stringBuilder = new StringBuilder();
-		stringBuilder.append("x: ");
-		stringBuilder.append(Float.toString(event.values[0]));
-		stringBuilder.append("\ny: ");
-		stringBuilder.append(Float.toString(event.values[1]));
-		stringBuilder.append("\nz: ");
-		stringBuilder.append(Float.toString(event.values[2]));
-		stringBuilder.append("\nw: ");
-		stringBuilder.append(Float.toString(event.values[3]));
-		updateUIInfo(stringBuilder.toString());
+		String text;
+		try {
+			text = UnityQuaternion.from(event).toText();
+		} catch (IllegalArgumentException e) {
+			text = getString(R.string.sensor_unreadable);
+		}
+		updateUIData(text);
 	}
 
 	@Override
@@ -233,6 +232,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
 	private RadioButton getSensorDelayRadioButtonFromValue(int value) {
 		return ((RadioButton) findViewById(getSensorDelayRadioButtonIdFromValue(value)));
+	}
+
+	private void initUI() {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				Sensor sensor = SmartpadApplication.getSensor();
+				if (sensor == null) {
+					info.setText(getString(R.string.sensor_usage_non));
+				} else {
+					info.setText(getString(R.string.sensor_usage) + " " + sensor.getName());
+				}
+			}
+		});
+		updateUI();
 	}
 
 	private void updateUI() {
@@ -266,7 +280,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 						break;
 					}
 					case RUNNING: {
-						updateUIInfo("");
+						updateUIData("");
 
 						setup.setVisibility(View.GONE);
 						waiting.setVisibility(View.GONE);
@@ -285,11 +299,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 		});
 	}
 
-	private void updateUIInfo(final String info) {
+	private void updateUIData(final String data) {
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				MainActivity.this.info.setText(info);
+				MainActivity.this.data.setText(data);
 			}
 		});
 	}
@@ -335,13 +349,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 	private void registerSensorListener() {
 		initSensorManager();
 		initHandler();
-		sensorManager.registerListener(MainActivity.this, RotationApplication.getSensor(), SensorManager.SENSOR_DELAY_UI, handler);
+		sensorManager.registerListener(MainActivity.this, SmartpadApplication.getSensor(), SensorManager.SENSOR_DELAY_UI, handler);
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered main activities sensor listener");
 	}
 
 	private void unregisterSensorListener() {
 		initSensorManager();
-		sensorManager.unregisterListener(MainActivity.this, RotationApplication.getSensor());
+		sensorManager.unregisterListener(MainActivity.this, SmartpadApplication.getSensor());
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered main activities sensor listener");
 	}
 

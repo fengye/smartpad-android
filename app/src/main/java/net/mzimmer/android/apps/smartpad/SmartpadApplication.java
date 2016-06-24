@@ -1,11 +1,11 @@
-package net.mzimmer.android.apps.rotation;
+package net.mzimmer.android.apps.smartpad;
 
 import android.app.Application;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 
-public class RotationApplication extends Application {
+public class SmartpadApplication extends Application {
 	private static Sensor sensor;
 
 	public static Sensor getSensor() {

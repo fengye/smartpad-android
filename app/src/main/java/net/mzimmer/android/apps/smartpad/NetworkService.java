@@ -1,4 +1,4 @@
-package net.mzimmer.android.apps.rotation;
+package net.mzimmer.android.apps.smartpad;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -36,9 +36,9 @@ public class NetworkService extends Service implements SensorEventListener {
 	private static boolean running;
 
 	static {
-		EXTRA_HOST = "net.mzimmer.android.apps.rotation.NetworkService.extra.host";
-		EXTRA_PORT = "net.mzimmer.android.apps.rotation.NetworkService.extra.port";
-		EXTRA_SENSOR_DELAY = "net.mzimmer.android.apps.rotation.NetworkService.extra.sensorDelay";
+		EXTRA_HOST = "net.mzimmer.android.apps.smartpad.NetworkService.extra.host";
+		EXTRA_PORT = "net.mzimmer.android.apps.smartpad.NetworkService.extra.port";
+		EXTRA_SENSOR_DELAY = "net.mzimmer.android.apps.smartpad.NetworkService.extra.sensorDelay";
 
 		NOTIFICATION_ID = 0;
 		running = false;
@@ -193,7 +193,7 @@ public class NetworkService extends Service implements SensorEventListener {
 	private void registerSensorListener(int sensorDelay) {
 		initSensorManager();
 		initHandler();
-		sensorManager.registerListener(NetworkService.this, RotationApplication.getSensor(), sensorDelay, handler);
+		sensorManager.registerListener(NetworkService.this, SmartpadApplication.getSensor(), sensorDelay, handler);
 		running = true;
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Registered network service' sensor listener");
 	}
@@ -201,7 +201,7 @@ public class NetworkService extends Service implements SensorEventListener {
 	private void unregisterSensorListener() {
 		initSensorManager();
 		running = false;
-		sensorManager.unregisterListener(this, RotationApplication.getSensor());
+		sensorManager.unregisterListener(this, SmartpadApplication.getSensor());
 		Logger.getLogger(Logger.GLOBAL_LOGGER_NAME).info("Unregistered network service' sensor listener");
 	}
 
@@ -221,7 +221,7 @@ public class NetworkService extends Service implements SensorEventListener {
 
 		return new NotificationCompat.Builder(getApplicationContext())
 				.setSmallIcon(R.mipmap.rotation)
-				.setContentTitle(getString(R.string.rotation))
+				.setContentTitle(getString(R.string.app_name))
 				.setContentText(getString(R.string.streaming_to) + " " + address.toString())
 				.setOngoing(true)
 				.setContentIntent(viewMainActivityPendingIntent)
@@ -249,7 +249,7 @@ public class NetworkService extends Service implements SensorEventListener {
 		private static final String ACTION_NETWORK_STOP;
 
 		static {
-			ACTION_NETWORK_STOP = "net.mzimmer.android.apps.rotation.NetworkService.action.network.stop";
+			ACTION_NETWORK_STOP = "net.mzimmer.android.apps.smartpad.NetworkService.action.network.stop";
 		}
 
 		public static Intent intent(Context context) {
